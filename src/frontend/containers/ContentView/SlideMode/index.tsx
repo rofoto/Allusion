@@ -183,12 +183,15 @@ const SlideView = observer(({ width, height }: SlideViewProps) => {
           upscaleMode={uiStore.upscaleMode}
         />
       )}
-      <NavigationButtons
-        isStart={isFirst.get()}
-        isEnd={isLast.get()}
-        prevImage={decrImgIndex}
-        nextImage={incrImgIndex}
-      />
+      {/* Side navigation overlays cover the native video controls; hide them for playable videos. */}
+      {file && !(isVideoExtension(file.extension) && canPlayVideo(file.extension)) && (
+        <NavigationButtons
+          isStart={isFirst.get()}
+          isEnd={isLast.get()}
+          prevImage={decrImgIndex}
+          nextImage={incrImgIndex}
+        />
+      )}
     </div>
   );
 });
@@ -453,11 +456,19 @@ const VideoView = ({
           outline: 'none',
         }}
         onKeyDown={(e) => {
-          // Prevent global shortcuts (e.g. space/arrow navigation) when interacting with the player
-          if (e.key === ' ' || e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+          // Let native video controls handle playback/seek; prevent global slide navigation.
+          if (
+            e.key === ' ' ||
+            e.key === 'ArrowLeft' ||
+            e.key === 'ArrowRight' ||
+            e.key === 'ArrowUp' ||
+            e.key === 'ArrowDown'
+          ) {
             e.stopPropagation();
           }
         }}
+        onPointerDown={(e) => e.stopPropagation()}
+        onDoubleClick={(e) => e.stopPropagation()}
       />
     </div>
   );

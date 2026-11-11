@@ -71,8 +71,28 @@ landed independently. File paths are relative to the repository root.
     done in `util.ts`/`ImageLoader` (no separate loader class, no ExifTool-embedded-thumbnail
     fast path, no explicit concurrency limiter beyond existing thumbnail flow). Unsupported
     codecs/seek failures will reject and surface as a thumbnail-generation error.
-- **Verified after B2:** `yarn test` (50 tests, 7 suites), ESLint (0 errors). AppImage
-  rebuild pending.
+- **Verified after B2:** `yarn test` (50 tests, 7 suites), ESLint (0 errors), `yarn package`
+  (Linux AppImage).
+- **Phase B3 — Playback UI: DONE.**
+  - `src/frontend/containers/ContentView/SlideMode/index.tsx`: branches on
+    `isVideoExtension` to render an in-app `<video>` player (controls, poster, preload
+    metadata, `object-fit: contain`) instead of `ZoomPan`. Playback support is checked via
+    `video.canPlayType` (mime map); unsupported formats show the poster plus an "Open in
+    external application" fallback (reusing `ImageFallback`). Space/arrow keydown on the
+    player is stopped from bubbling to global navigation.
+  - `src/frontend/containers/ContentView/GalleryItem.tsx`: thumbnails always use the
+    generated poster for videos (never `getImageSrc`); overlay tooltip shows duration.
+  - `src/frontend/containers/ContentView/ListItem.tsx`: dimensions cell shows duration for
+    videos.
+  - `src/frontend/components/ImageInfo.tsx`: common metadata includes duration; exif fields
+    include `Duration`, `VideoFrameRate`, `CompressorName`, `MIMEType`.
+  - `src/frontend/entities/File.ts`: `ClientFile` now stores/persists `duration` and `kind`
+    from `FileDTO`.
+  - `common/fmt.ts`: added `formatDuration`.
+  - `Preview.tsx` inherits behavior via `ContentView`/slide mode. `ImageLoader.getImageSrc`
+    still returns `undefined` for `video` (poster/full playback handled in UI).
+- **Verified after B3:** `yarn test` (50 tests, 7 suites), ESLint (0 errors). AppImage rebuild
+  pending.
 
 ---
 
@@ -398,7 +418,7 @@ images unaffected.
 **Exit criteria:** video cells show poster thumbnails in all view modes; no jank while
 scrolling large libraries (captures are queued and limited).
 
-#### Phase B3 — Playback UI
+#### Phase B3 — Playback UI — DONE (see progress log)
 
 1. New `src/frontend/containers/ContentView/SlideMode/VideoView.tsx`:
    - `<video src={absolutePath} poster={thumbnailPath} controls preload="metadata" />`

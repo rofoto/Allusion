@@ -3,8 +3,9 @@ import { action, when } from 'mobx';
 import { observer } from 'mobx-react-lite';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import { ellipsize, humanFileSize } from 'common/fmt';
+import { ellipsize, formatDuration, humanFileSize } from 'common/fmt';
 import { encodeFilePath } from 'common/fs';
+import { isVideoExtension } from '../../../api/file';
 import { IconButton, IconSet, Tag } from 'widgets';
 import { useStore } from '../../contexts/StoreContext';
 import { ClientFile } from '../../entities/File';
@@ -109,7 +110,8 @@ export const Thumbnail = observer(({ file, mounted, forceNoThumbnail }: ItemProp
         }
       }
 
-      if (useThumbnail) {
+      const usePoster = useThumbnail || isVideoExtension(file.extension);
+      if (usePoster) {
         const freshlyGenerated = await imageLoader.ensureThumbnail(file);
         // The thumbnailPath of an image is always set, but may not exist yet.
         // When the thumbnail is finished generating, the path will be changed to `${thumbnailPath}?v=1`.
@@ -225,9 +227,10 @@ const ThumbnailOverlay = ({
   showFilename: boolean;
   showResolution: boolean;
 }) => {
-  const title = `${ellipsize(file.absolutePath, 80, 'middle')}, ${file.width}x${
-    file.height
-  }, ${humanFileSize(file.size)}`;
+  const details = `${file.width}x${file.height}, ${humanFileSize(file.size)}${
+    file.duration !== undefined ? `, ${formatDuration(file.duration)}` : ''
+  }`;
+  const title = `${ellipsize(file.absolutePath, 80, 'middle')}, ${details}`;
 
   return (
     <div className="thumbnail-overlay" data-tooltip={title}>
@@ -240,6 +243,7 @@ const ThumbnailOverlay = ({
       {showResolution && (
         <div className="thumbnail-resolution" data-tooltip={title}>
           {file.width}⨯{file.height}
+          {file.duration !== undefined ? ` · ${formatDuration(file.duration)}` : ''}
         </div>
       )}
     </div>

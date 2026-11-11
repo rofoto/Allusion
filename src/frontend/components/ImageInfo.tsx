@@ -1,7 +1,7 @@
 import fse from 'fs-extra';
 import React, { ReactNode, useCallback, useEffect, useState } from 'react';
 
-import { formatDateTime, humanFileSize } from 'common/fmt';
+import { formatDateTime, formatDuration, humanFileSize } from 'common/fmt';
 import { IconSet } from 'widgets/icons';
 import { Toolbar, ToolbarButton } from 'widgets/toolbar';
 import { RendererMessenger } from '../../ipc/renderer';
@@ -14,6 +14,7 @@ import { AppToaster } from './Toaster';
 type CommonMetadata = {
   name: string;
   dimensions: string;
+  duration?: string;
   size: string;
   imported: string;
   created: string;
@@ -23,6 +24,7 @@ type CommonMetadata = {
 const commonMetadataLabels: Record<keyof CommonMetadata, string> = {
   name: 'Filename',
   dimensions: 'Dimensions',
+  duration: 'Duration',
   size: 'Size',
   imported: 'Imported',
   // TODO: modified in allusion vs modified in system?
@@ -57,6 +59,10 @@ const exifFields: Record<string, ExifField> = {
   ExposureTime: { label: 'Exposure Time' },
   FNumber: { label: 'F-stop' },
   FocalLength: { label: 'Focal Length' },
+  Duration: { label: 'Duration' },
+  VideoFrameRate: { label: 'Frame Rate' },
+  CompressorName: { label: 'Codec' },
+  MIMEType: { label: 'MIME Type' },
   GPSLatitude: { label: 'GPS Latitude' },
   GPSLongitude: { label: 'GPS Longitude' },
 };
@@ -82,6 +88,7 @@ const ImageInfo = ({ file }: ImageInfoProps) => {
   const fileStats: CommonMetadata = {
     name: file.name,
     dimensions: `${file.width || '?'} x ${file.height || '?'}`,
+    duration: file.duration !== undefined ? formatDuration(file.duration) : undefined,
     size: humanFileSize(file.size),
     imported: formatDateTime(file.dateAdded),
     created: formatDateTime(file.dateCreated),
@@ -191,12 +198,18 @@ const ImageInfo = ({ file }: ImageInfoProps) => {
       </header>
       <table id="file-info">
         <tbody>
-          {Object.entries(commonMetadataLabels).map(([field, label]) => (
-            <tr key={field}>
-              <th scope="row">{label}</th>
-              <td>{fileStats[field as keyof CommonMetadata]}</td>
-            </tr>
-          ))}
+          {Object.entries(commonMetadataLabels).map(([field, label]) => {
+            const value = fileStats[field as keyof CommonMetadata];
+            if (value === undefined || value === '') {
+              return null;
+            }
+            return (
+              <tr key={field}>
+                <th scope="row">{label}</th>
+                <td>{value}</td>
+              </tr>
+            );
+          })}
           {Object.entries(exifFields).map(([key, field]) => {
             const value = exifStats[key];
             const isEditingMode = isEditing && field.modifiable;

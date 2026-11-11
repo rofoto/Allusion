@@ -330,9 +330,12 @@ The detailed implementation plan for items 2–7 is in
 - **M4 (partially)** — `FileDTO` now stores `duration` (seconds) and `kind`; the inspector
   and list UI still need to surface them (Phase B3).
 - **H1** — partially resolved. Video extensions are registered, default-enabled and
-  discoverable, width/height/duration metadata is stored, and poster thumbnails are generated
-  for decodable videos via renderer `<video>`+canvas capture. In-app playback and richer UI
-  surfacing are still pending (Phase B3).
+  discoverable, width/height/duration metadata is stored, poster thumbnails are generated for
+  decodable videos, and slide/preview mode plays supported videos (`canPlayType`) with an
+  external-open fallback; duration/kind are surfaced in gallery/list/inspector. Drag & drop /
+  clipboard import for video and search-by-kind/duration remain pending (Phases B4–B5).
+- **M4** — mostly resolved for UI surfacing. `FileDTO`/`ClientFile` store and display
+  `duration` and `kind`; duration is not yet an indexed/searchable criterion.
 - **M3** — partially resolved. Settings now groups image and video formats, badges
   preview-only formats, and confirms before deleting videos.
 - **M4** — partially resolved. `FileDTO` stores `duration` and `kind`; the inspector and

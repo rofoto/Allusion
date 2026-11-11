@@ -1,7 +1,7 @@
 import { observer } from 'mobx-react-lite';
 import React, { CSSProperties, useEffect, useMemo, useRef, useState } from 'react';
 
-import { formatDateTime, humanFileSize } from 'common/fmt';
+import { formatDateTime, formatDuration, humanFileSize } from 'common/fmt';
 import { useStore } from '../../contexts/StoreContext';
 import { ClientFile } from '../../entities/File';
 import { CommandDispatcher } from './Commands';
@@ -66,6 +66,7 @@ export const ListItem = observer((props: ListItemProps) => {
       {/* Dimensions */}
       <div role="gridcell" className="col-dimensions">
         {file.width} x {file.height}
+        {file.duration !== undefined ? ` · ${formatDuration(file.duration)}` : ''}
       </div>
 
       {/* Import date */}

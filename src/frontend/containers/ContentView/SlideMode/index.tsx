@@ -5,6 +5,7 @@ import SysPath from 'path';
 import React, { useEffect, useMemo } from 'react';
 
 import { encodeFilePath } from 'common/fs';
+import { isVideoExtension } from '../../../../api/file';
 import { Button, IconSet, Split } from 'widgets';
 import { useStore } from '../../../contexts/StoreContext';
 import { ClientFile } from '../../../entities/File';
@@ -203,7 +204,21 @@ interface ZoomableImageProps {
   upscaleMode: UpscaleMode;
 }
 
-const ZoomableImage: React.FC<ZoomableImageProps> = ({
+const ZoomableImage: React.FC<ZoomableImageProps> = (props) => {
+  if (isVideoExtension(props.file.extension)) {
+    return (
+      <VideoView
+        file={props.file}
+        thumbnailSrc={props.thumbnailSrc}
+        width={props.width}
+        height={props.height}
+      />
+    );
+  }
+  return <ZoomableStillImage {...props} />;
+};
+
+const ZoomableStillImage: React.FC<ZoomableImageProps> = ({
   file,
   thumbnailSrc,
   width,
@@ -333,16 +348,26 @@ const NavigationButtons = ({ isStart, isEnd, prevImage, nextImage }: NavigationB
 };
 
 interface ImageFallbackProps {
-  error: any;
+  error?: any;
   absolutePath: string;
+  label?: string;
+  posterPath?: string;
 }
 
-const ImageFallback = ({ error, absolutePath }: ImageFallbackProps) => {
+const ImageFallback = ({ error, absolutePath, label, posterPath }: ImageFallbackProps) => {
   return (
     <div style={CONTAINER_DEFAULT_STYLE} className="image-fallback">
-      <div style={{ maxHeight: 360, maxWidth: 360 }} className="image-error" />
+      {posterPath ? (
+        <img
+          src={encodeFilePath(posterPath.split('?v=1')[0])}
+          alt=""
+          style={{ maxHeight: 360, maxWidth: 360, objectFit: 'contain' }}
+        />
+      ) : (
+        <div style={{ maxHeight: 360, maxWidth: 360 }} className="image-error" />
+      )}
       <br />
-      <span>Could not load {error ? '' : 'full '}image </span>
+      <span>{label ?? (error ? 'Could not load image ' : 'Could not load full image ')}</span>
       <pre
         title={absolutePath}
         style={{ maxWidth: '40ch', overflow: 'hidden', textOverflow: 'ellipsis' }}
@@ -356,6 +381,83 @@ const ImageFallback = ({ error, absolutePath }: ImageFallbackProps) => {
             .catch((e) => console.error(e, absolutePath))
         }
         text="Open in external application"
+      />
+    </div>
+  );
+};
+
+const VIDEO_MIME_TYPES: Record<string, string> = {
+  mp4: 'video/mp4',
+  m4v: 'video/mp4',
+  mov: 'video/quicktime',
+  webm: 'video/webm',
+  ogv: 'video/ogg',
+  mkv: 'video/x-matroska',
+  avi: 'video/x-msvideo',
+  wmv: 'video/x-ms-wmv',
+  flv: 'video/x-flv',
+  ts: 'video/mp2t',
+  mts: 'video/mp2t',
+  m2ts: 'video/mp2t',
+  '3gp': 'video/3gpp',
+  '3g2': 'video/3gpp2',
+};
+
+function canPlayVideo(extension: string): boolean {
+  const mime = VIDEO_MIME_TYPES[extension];
+  if (!mime || typeof document === 'undefined') {
+    return true;
+  }
+  const video = document.createElement('video');
+  return video.canPlayType(mime) !== '';
+}
+
+const VideoView = ({
+  file,
+  thumbnailSrc,
+  width,
+  height,
+}: {
+  file: ClientFile;
+  thumbnailSrc: string;
+  width: number;
+  height: number;
+}) => {
+  const playable = useMemo(() => canPlayVideo(file.extension), [file.extension]);
+
+  if (!playable) {
+    return (
+      <ImageFallback
+        absolutePath={file.absolutePath}
+        label="Playback is not supported for this video format. "
+        posterPath={thumbnailSrc || file.thumbnailPath}
+      />
+    );
+  }
+
+  return (
+    <div style={{ ...CONTAINER_DEFAULT_STYLE, width, height }}>
+      <video
+        key={file.id}
+        src={encodeFilePath(file.absolutePath)}
+        poster={thumbnailSrc ? encodeFilePath(thumbnailSrc.split('?v=1')[0]) : undefined}
+        controls
+        preload="metadata"
+        playsInline
+        style={{
+          maxWidth: '100%',
+          maxHeight: '100%',
+          width: '100%',
+          height: '100%',
+          objectFit: 'contain',
+          outline: 'none',
+        }}
+        onKeyDown={(e) => {
+          // Prevent global shortcuts (e.g. space/arrow navigation) when interacting with the player
+          if (e.key === ' ' || e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+            e.stopPropagation();
+          }
+        }}
       />
     </div>
   );

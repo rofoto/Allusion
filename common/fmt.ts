@@ -102,3 +102,19 @@ export function humanFileSize(bytes: number, si = false, dp = 1) {
 
   return bytes.toFixed(dp) + ' ' + units[u];
 }
+
+/** Formats a duration in seconds as mm:ss or hh:mm:ss. */
+export function formatDuration(seconds: number): string {
+  if (!Number.isFinite(seconds) || seconds < 0) {
+    return '0:00';
+  }
+  const total = Math.round(seconds);
+  const hrs = Math.floor(total / 3600);
+  const mins = Math.floor((total % 3600) / 60);
+  const secs = total % 60;
+  const secStr = secs.toString().padStart(2, '0');
+  if (hrs > 0) {
+    return `${hrs}:${mins.toString().padStart(2, '0')}:${secStr}`;
+  }
+  return `${mins}:${secStr}`;
+}

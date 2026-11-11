@@ -60,6 +60,10 @@ export class ClientFile {
   readonly extension: FILE_EXTENSIONS_TYPE;
   /** Same as "name", but without extension */
   readonly filename: string;
+  /** Duration in seconds, for video files */
+  readonly duration?: number;
+  /** Whether this file is an image or a video */
+  readonly kind?: FileKind;
 
   @observable thumbnailPath: string = '';
 
@@ -76,6 +80,8 @@ export class ClientFile {
     this.size = fileProps.size;
     this.width = fileProps.width;
     this.height = fileProps.height;
+    this.duration = fileProps.duration;
+    this.kind = fileProps.kind ?? FILE_EXTENSION_KIND[fileProps.extension];
     this.dateAdded = fileProps.dateAdded;
     this.dateCreated = fileProps.dateCreated;
     this.dateModified = fileProps.dateModified;
@@ -163,6 +169,8 @@ export class ClientFile {
       size: this.size,
       width: this.width,
       height: this.height,
+      duration: this.duration,
+      kind: this.kind,
       dateAdded: this.dateAdded,
       dateCreated: this.dateCreated,
       dateModified: this.dateModified,

@@ -91,8 +91,21 @@ landed independently. File paths are relative to the repository root.
   - `common/fmt.ts`: added `formatDuration`.
   - `Preview.tsx` inherits behavior via `ContentView`/slide mode. `ImageLoader.getImageSrc`
     still returns `undefined` for `video` (poster/full playback handled in UI).
-- **Verified after B3:** `yarn test` (50 tests, 7 suites), ESLint (0 errors). AppImage rebuild
-  pending.
+- **Verified after B3:** `yarn test` (50 tests, 7 suites), ESLint (0 errors), `yarn package`
+  (Linux AppImage).
+- **Phase B4 — Drag & drop and import: DONE (core).**
+  - `src/frontend/containers/Outliner/LocationsPanel/dnd.ts`: added `EXTENSION_TO_MIME` for
+    all `FILE_EXTENSIONS`, accepts files by known mime/extension and `image/*`/`video/*` types,
+    supports HTML `<video>/<source>` drops, and generalizes storage to `storeDroppedMedia`
+    (`storeDroppedImage` kept as alias). URL probing accepts image/video content types.
+  - `src/frontend/containers/Outliner/LocationsPanel/useFileDnD.ts`: uses `storeDroppedMedia`
+    and updated messaging.
+  - `src/frontend/hooks/useClipboardImporter.ts`: accepts pasted `video/*` clipboard items
+    (in addition to images) and derives extensions for common video mime types.
+  - Browser extension / clipper endpoint changes and `main.ts` drag-export icon for videos
+    were not implemented (optional/out of scope for this pass).
+- **Verified after B4:** `yarn test` (50 tests, 7 suites), ESLint (0 errors; warnings in
+  touched files). AppImage rebuild pending.
 
 ---
 
@@ -436,7 +449,7 @@ scrolling large libraries (captures are queued and limited).
 **Exit criteria:** double-clicking a video opens slide mode and plays it (when the codec is
 supported); unsupported videos show a clear fallback.
 
-#### Phase B4 — Drag & drop and import
+#### Phase B4 — Drag & drop and import — DONE (core; see progress log)
 
 1. `dnd.ts`:
    - Add `EXTENSION_TO_MIME` (correct types: `image/jpeg`, `image/tiff`,

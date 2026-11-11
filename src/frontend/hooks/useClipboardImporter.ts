@@ -8,21 +8,38 @@ const DEFAULT_FILE_NAME = 'image.png';
 export function useClipboardImporter(uiStore: UiStore) {
   const pasteHandle = useCallback(
     (e: ClipboardEvent) => {
-      const { items, files } = e.clipboardData!;
-
-      let fileName = `allusion_${Date.now()}`;
-      const type = items[0].type;
-      if (!type.match(/image/)) {
+      const clipboardData = e.clipboardData;
+      if (!clipboardData) {
+        return;
+      }
+      const { items, files } = clipboardData;
+      if (!items || items.length === 0) {
         return;
       }
 
-      const blob = items[0].getAsFile();
+      // Find the first supported media item
+      let item: DataTransferItem | undefined;
+      for (let i = 0; i < items.length; i++) {
+        if (items[i].type.startsWith('image/') || items[i].type.startsWith('video/')) {
+          item = items[i];
+          break;
+        }
+      }
+      if (!item) {
+        return;
+      }
+
+      const type = item.type;
+      const blob = item.getAsFile();
       if (!blob) {
         return;
       }
-      const file = files[0];
-      if (file && file.type.includes('image')) {
-        fileName = file.name == DEFAULT_FILE_NAME ? `allusion_${file.lastModified}.png` : file.name;
+
+      let fileName = `allusion_${Date.now()}`;
+      const file = files && files.length > 0 ? files[0] : undefined;
+      if (file && (file.type.startsWith('image/') || file.type.startsWith('video/'))) {
+        fileName =
+          file.name === DEFAULT_FILE_NAME ? `allusion_${file.lastModified}.png` : file.name;
       }
 
       const reader = new FileReader();
@@ -35,11 +52,20 @@ export function useClipboardImporter(uiStore: UiStore) {
         return;
       }
       reader.addEventListener('loadend', async function (e) {
-        const imgBase64 = e.target!.result!.toString();
+        const imgBase64 = e.target?.result?.toString();
+        if (!imgBase64) {
+          return;
+        }
         if (!fileName.includes('.')) {
-          let ext = imgBase64.split(';')[0].split('/')[1];
+          let ext = (type.split('/')[1] || 'bin').toLowerCase();
           if (ext === 'jpeg') {
             ext = 'jpg';
+          }
+          if (ext === 'quicktime') {
+            ext = 'mov';
+          }
+          if (ext === 'x-matroska') {
+            ext = 'mkv';
           }
           fileName = `${fileName}.${ext}`;
         }

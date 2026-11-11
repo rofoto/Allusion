@@ -17,7 +17,7 @@ import {
   handleDragLeave,
   isAcceptableType,
   onDragOver,
-  storeDroppedImage,
+  storeDroppedMedia,
 } from './dnd';
 
 export const HOVER_TIME_TO_EXPAND = 600;
@@ -157,12 +157,12 @@ export const useFileDropHandling = (
           } else {
             // Otherwise it's an external file (e.g. from the web or a folder not set up as a Location in Allusion)
             // -> download it and "copy" it to the target folder
-            await storeDroppedImage(dropData, fullPath);
+            await storeDroppedMedia(dropData, fullPath);
           }
         } catch (e) {
           console.error(e);
           AppToaster.show({
-            message: 'Something went wrong, could not import image :(',
+            message: 'Something went wrong, could not import file :(',
             timeout: 4000,
           });
         }

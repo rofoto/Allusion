@@ -4,9 +4,11 @@ This directory is the knowledge base for AI agents (and humans) working on **All
 It contains an audit of the repository, an architecture overview, and the implementation
 plan for extending image format support and adding video support.
 
-> **Snapshot:** Allusion `v1.0.0-rc.10`, commit `631cfb5f` (2023-05-30), branch `master`.
-> The configured git remote is `https://github.com/rofoto/Allusion.git`; `package.json`
-> still points at `https://github.com/allusion-app/Allusion`.
+> **Snapshot:** Allusion `v1.0.0-rc.10`, branch `master` (HEAD `ec91ecc9`, 2026-11-11).
+> Originally forked from upstream `631cfb5f` (`allusion-app/Allusion`); this checkout's git
+> remote is `https://github.com/rofoto/Allusion.git` while `package.json` still points at
+> `https://github.com/allusion-app/Allusion`. Media-support work (A0/A1, B0–B4) has landed on
+> this branch; see [MEDIA_SUPPORT_PLAN.md](MEDIA_SUPPORT_PLAN.md).
 
 ## Documentation index
 
@@ -14,13 +16,17 @@ plan for extending image format support and adding video support.
 | --- | --- |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | System architecture, data flow, module map, DB schema, IPC, build pipeline |
 | [AUDIT.md](AUDIT.md) | Repository audit: strengths, defects, gaps, risks, test coverage, prioritized recommendations |
-| [MEDIA_SUPPORT_PLAN.md](MEDIA_SUPPORT_PLAN.md) | Implementation plan: extending image formats and adding video support (phased, file-by-file) |
+| [MEDIA_SUPPORT_PLAN.md](MEDIA_SUPPORT_PLAN.md) | Implementation status/plan: extending image formats and adding video support (phased, file-by-file) |
+| [ELECTRON_UPGRADE_PLAN.md](ELECTRON_UPGRADE_PLAN.md) | Phased plan for upgrading Electron/Chromium/Node and related tooling |
 
 ## What Allusion is
 
-Allusion is an Electron desktop app for artists to organize a **visual library**: images
-(and, planned, video) are discovered from user-chosen **Locations**, tagged, searched and
-viewed in a masonry/list/grid gallery, a slide view, and a separate preview window.
+Allusion is an Electron desktop app for artists to organize a **visual library**: images and
+videos are discovered from user-chosen **Locations**, tagged, searched and viewed in a
+masonry/list/grid gallery, a slide view, and a separate preview window. Video files get poster
+thumbnails and in-app playback when the platform codec is supported (`canPlayType`), with an
+external-open fallback. Full-resolution RAW/HEIC/JXL/XCF decoding remains out of scope for now
+(AVIF is supported as a browser-native image format).
 
 ## Tech stack
 
@@ -93,22 +99,32 @@ AGENTS/                 This directory
 - **DTO vs client entity.** `src/api/*` defines plain data-transfer objects (`FileDTO`,
   `TagDTO`, `LocationDTO`). `src/frontend/entities/*` defines MobX-wrapped client entities
   (`ClientFile`, `ClientTag`, `ClientLocation`) that auto-save changes to the backend.
-  Never put MobX observables into DTOs; `serialize()` strips them.
+  Never put MobX observables into DTOs; `serialize()` strips them. `FileDTO`/`ClientFile`
+  include optional `kind?: FileKind` (`'image' | 'video'`) and `duration?: number` (seconds,
+  non-indexed).
 - **Backend is in the renderer.** `Backend` (`src/backend/backend.ts`) implements
   `DataStorage` over Dexie. The main process does not touch IndexedDB directly; it uses IPC
-  for window/system operations only.
-- **Format handling is extension-driven.** `IMG_EXTENSIONS` in `src/api/file.ts` is the
-  single source of truth for discoverable extensions. `ImageLoader.FormatHandlers` maps each
-  extension to a handler (`web`, `tifLoader`, `exrLoader`, `psdLoader`,
-  `extractEmbeddedThumbnailOnly`, `none`). TypeScript enforces that every extension has a
-  handler. Discovery is done by the `folderWatcher` web worker using the location's enabled
-  extension list.
-- **Thumbnails.** Generated on demand by `ImageLoader.ensureThumbnail`, stored as WebP in a
-  user-configurable directory (`UiStore.thumbnailDirectory`), named
-  `<basename>-<hash>.webp`. Four `thumbnailGenerator` workers process Web-native formats;
-  TIFF/PSD/EXR are decoded on the main thread; Krita/PSD embedded thumbnails are extracted
-  with ExifTool/`node-stream-zip`. `FileStore.filesFromBackend` seeds `thumbnailPath` and
-  `Thumbnail`/`ZoomableImage` trigger generation.
+  for window/system operations only. Schema is at v8 (`src/backend/config.ts`); `kind`/`duration`
+  are not indexed yet.
+- **Format handling is extension-driven.** `src/api/file.ts` is the source of truth:
+  `IMAGE_EXTENSIONS`, `VIDEO_EXTENSIONS`, `FILE_EXTENSIONS`, `FILE_EXTENSION_KIND`, and helpers
+  (`isImageExtension`, `isVideoExtension`, `getFileKind`). `IMG_EXTENSIONS`/`IMG_EXTENSIONS_TYPE`
+  remain as deprecated aliases. Per-kind handlers live in
+  `src/frontend/image/format-handlers.ts` (`getFormatHandler`). Discovery is done by the
+  `folderWatcher` web worker using the location's enabled extension list.
+- **Thumbnails & playback.** Generated on demand by `ImageLoader.ensureThumbnail`, stored as
+  WebP in a user-configurable directory (`UiStore.thumbnailDirectory`), named
+  `<basename>-<hash>.webp`. Web-native images use `thumbnailGenerator` workers; TIFF/PSD/EXR are
+  decoded on the main thread; embedded thumbnails are extracted via ExifTool/`node-stream-zip`.
+  Video posters are captured in the renderer (`util.generateVideoThumbnail`) by seeking a
+  `<video>` element and drawing to canvas. `getImageSrc` returns `undefined` for video; slide/
+  preview mode renders a `<video>` player (with `canPlayType` gating and external-open fallback).
+  `FileStore.filesFromBackend` seeds `thumbnailPath` and `Thumbnail`/gallery views trigger
+  generation.
+- **Preferences.** `src/frontend/stores/location-store-preferences.ts` defines
+  `PREFERENCES_STORAGE_KEY`, default enabled extensions (all images except `exr` + default
+  videos `mp4,m4v,mov,webm`) and versioned migration/serialization. `LocationStore` persists
+  enabled extensions to `localStorage`.
 - **MobX is strict.** `configure({ observableRequiresReaction: true, reactionRequiresObservable: true })`
   in `RootStore` means state reads outside reactions and mutations outside actions throw.
 - **Imports use path aliases.** `common/*`, `widgets/*`, `src/*`, `wasm/*`, `resources/*`
@@ -116,7 +132,8 @@ AGENTS/                 This directory
 - **WASM is committed.** `wasm/packages/**` must be committed after rebuilding; feature
   detection (scalar vs SIMD masonry) happens in JS.
 - **ExifTool is a long-running child process.** `ExifIO` opens one `ExiftoolProcess` and
-  keeps it alive. The preview window intentionally does not initialize it (see
+  keeps it alive. `getMediaMetadata` reads width/height/duration (normalizing numeric, formatted
+  and HMS duration strings). The preview window intentionally does not initialize it (see
   `RootStore.preview`).
 
 ## Agent conventions and gotchas
@@ -136,13 +153,18 @@ AGENTS/                 This directory
 
 ## Known limitations / planned work
 
-See [AUDIT.md](AUDIT.md) for the full list. The main planned work is:
+See [AUDIT.md](AUDIT.md) for the full list. Major items:
 
-1. Extend supported **image** formats (AVIF, HEIC/HEIF, JPEG XL, XCF, RAW previews, …).
-2. Add **video** support (discovery, metadata, poster thumbnails, playback, UI).
-3. Modernize Electron and ExifTool versions (optional, higher risk).
+1. **Additional image formats** beyond AVIF (HEIC/HEIF, JPEG XL, XCF, RAW previews, …) — phases
+   A2–A4 in [MEDIA_SUPPORT_PLAN.md](MEDIA_SUPPORT_PLAN.md).
+2. **Video polish**: B5 (optional) search/filter by `kind`/duration (needs DB schema bump),
+   browser-extension video import, drag-export icon for videos, Help Center copy.
+3. **Correctness/quality**: `Backend.createFilesFromPath` bulkAdd await issue (AUDIT H4),
+   thumbnail/loader hardening (AUDIT M7/M8).
+4. **Platform modernization**: upgrade Electron/Chromium/Node and ExifTool (separate, higher
+   risk) — see [ELECTRON_UPGRADE_PLAN.md](ELECTRON_UPGRADE_PLAN.md).
 
-The detailed, phased plan is in [MEDIA_SUPPORT_PLAN.md](MEDIA_SUPPORT_PLAN.md).
+Phased status and file-by-file details are in [MEDIA_SUPPORT_PLAN.md](MEDIA_SUPPORT_PLAN.md).
 
 ## Maintaining this documentation
 

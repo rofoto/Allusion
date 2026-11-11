@@ -105,7 +105,10 @@ landed independently. File paths are relative to the repository root.
   - Browser extension / clipper endpoint changes and `main.ts` drag-export icon for videos
     were not implemented (optional/out of scope for this pass).
 - **Verified after B4:** `yarn test` (50 tests, 7 suites), ESLint (0 errors; warnings in
-  touched files). AppImage rebuild pending.
+  touched files), `yarn package` (Linux AppImage).
+- **Post-B4 fix (`ec91ecc9`):** slide-mode playable videos no longer trigger prev/next
+  navigation on control clicks (side nav overlays hidden for playable video) and arrow/space
+  key events are contained for native player seek/playback. AppImage rebuilt.
 
 ---
 

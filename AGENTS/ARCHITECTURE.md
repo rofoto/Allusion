@@ -80,7 +80,9 @@ schema; all other fields are stored but not queryable through Dexie indexes.
 ### DTOs (`src/api/`)
 
 - `FileDTO`: id, ino, locationId, relativePath, absolutePath, tags, dateAdded, dateModified,
-  dateLastIndexed, name, extension, size, width, height, dateCreated.
+  dateLastIndexed, name, extension (`FILE_EXTENSIONS_TYPE`), size, width, height, dateCreated,
+  optional `kind` (`'image' | 'video'`, derived from extension) and optional `duration`
+  (seconds, for video). `kind`/`duration` are not indexed in the current Dexie schema (v8).
 - `TagDTO`: id, name, dateAdded, color, subTags, isHidden.
 - `LocationDTO`: id, path, dateAdded, subLocations, index.
 - `FileSearchDTO`: id, name, criteria, matchAny, index.
@@ -91,64 +93,78 @@ schema; all other fields are stored but not queryable through Dexie indexes.
 wrap DTOs in MobX observables. `ClientFile` has a `reaction` on `serialize()` that debounces
 saves back to the backend (`FileStore.save`).
 
-## Media pipeline (the part this repo's plan touches)
+## Media pipeline
 
 ```
 Location on disk
-   │  chokidar (folderWatcher worker, extension filter)
+   │  chokidar (folderWatcher worker, extension filter from FILE_EXTENSIONS)
    ▼
 FileStats { absolutePath, dateModified, dateCreated, size, ino }
    │  LocationStore.pathToIFile
    ▼
-FileDTO  ── getMetaData ──► ImageLoader.getImageResolution (ExifTool)
+FileDTO  ── getMetaData ──► ImageLoader.getImageResolution (ExifIO.getMediaMetadata)
    │                                          │
-   │                                          └─ width/height (and planned: duration)
+   │                                          └─ width/height (+ duration for video)
    ▼
 Backend.createFilesFromPath ──► IndexedDB
    │
    ▼
-FileStore.updateFromBackend ──► ClientFile (MobX)
+FileStore.updateFromBackend ──► ClientFile (MobX, with kind/duration)
    │
-   ├─ thumbnailPath seeded by ImageLoader.needsThumbnail()
+   ├─ thumbnailPath seeded by ImageLoader.needsThumbnail() (always for video)
    │
    ▼
-Thumbnail component / SlideMode
-   │  ImageLoader.ensureThumbnail() / getImageSrc()
+Thumbnail / Gallery / SlideMode
+   │  ImageLoader.ensureThumbnail() (+ getImageSrc() for still images)
    ▼
-Format handler:
-   web                      → createImageBitmap worker → WebP thumbnail / <img src=file>
-   tifLoader                → utif decode → ImageData → WebP thumbnail / blob URL
-   exrLoader                → Rust/WASM decode → ImageData → WebP thumbnail / blob URL
-   psdLoader                → ag-psd worker → ImageData → WebP thumbnail / blob URL
-   extractEmbeddedThumbnailOnly → ExifTool/Krita zip → thumbnail
-   none                     → use original file (e.g. SVG)
+Handlers (src/frontend/image/format-handlers.ts):
+   image/web                   → createImageBitmap worker → WebP thumbnail / <img src=file>
+   image/tifLoader             → utif decode → ImageData → WebP thumbnail / blob URL
+   image/exrLoader             → Rust/WASM decode → ImageData → WebP thumbnail / blob URL
+   image/psdLoader             → ag-psd worker → ImageData → WebP thumbnail / blob URL
+   image/extractEmbedded...    → ExifTool/Krita zip → thumbnail
+   image/none                  → use original file (e.g. SVG)
+   video/video                 → <video> frame capture → WebP poster; playback via <video> in slide/preview
 ```
 
 ### Format registry
 
-- `IMG_EXTENSIONS` (`src/api/file.ts`) is a `const` tuple; `IMG_EXTENSIONS_TYPE` is derived
-  from it and used in `FileDTO.extension`, the watcher, settings, search, DnD and
-  `ImageLoader.FormatHandlers`.
-- `LocationStore.enabledFileExtensions` (a `Set<IMG_EXTENSIONS_TYPE>`) is persisted in
-  `localStorage` under `location-store-preferences`. Defaults: all extensions except `exr`.
-- `ClientLocation.extensions` is a snapshot of that set at location creation/change time.
+- `src/api/file.ts` defines `IMAGE_EXTENSIONS`, `VIDEO_EXTENSIONS`, `FILE_EXTENSIONS`
+  (`const` tuples), `IMAGE/VIDEO/FILE_EXTENSIONS_TYPE`, `FileKind`, `FILE_EXTENSION_KIND`, and
+  helpers (`isImageExtension`, `isVideoExtension`, `getFileKind`). `IMG_EXTENSIONS` /
+  `IMG_EXTENSIONS_TYPE` are deprecated aliases.
+- `src/frontend/image/format-handlers.ts` maps each extension to a handler via per-kind maps
+  and `getFormatHandler` (image: `web`/`tifLoader`/`exrLoader`/`psdLoader`/
+  `extractEmbeddedThumbnailOnly`/`none`; video: `video`/`none`).
+- `LocationStore.enabledFileExtensions` (a `Set<FILE_EXTENSIONS_TYPE>`) is persisted in
+  `localStorage` (`PREFERENCES_STORAGE_KEY`, schema version 2 via
+  `location-store-preferences.ts`). Defaults: all image extensions except `exr` plus default
+  videos (`mp4`, `m4v`, `mov`, `webm`). Pre-video prefs are migrated once to enable default
+  videos. `ClientLocation.extensions` is a snapshot at location creation/change time.
 
 ### Thumbnail generation
 
 - `ImageLoader.ensureThumbnail` checks existence and mtime, then dispatches on the handler.
-- `generateThumbnailUsingWorker` round-robins messages across 4
-  `thumbnailGenerator.worker` instances; each worker has its own queue with
-  `MAX_PARALLEL_THUMBNAILS = 4`.
+- Images: `generateThumbnailUsingWorker` round-robins Web-native formats across 4
+  `thumbnailGenerator.worker` instances (each with a queue, `MAX_PARALLEL_THUMBNAILS = 4`);
+  TIFF/PSD/EXR are decoded on the main thread; embedded thumbnails extracted via ExifTool /
+  Krita zip.
+- Videos: `generateVideoThumbnail` (`src/frontend/image/util.ts`) captures a poster frame in
+  the renderer by seeking a hidden `<video>` element and drawing to a `<canvas>`, then writes a
+  WebP thumbnail (same sizing/quality logic). `needsThumbnail` is always true for video.
 - `common/fs.getThumbnailPath` builds `<thumbnailDir>/<basename>-<hash>.webp`.
 - Thumbnails are invalidated when the source file's mtime/size changes
   (`LocationStore.watchLocations`) or when the file is replaced/moved.
 
-### Full-size viewing
+### Full-size viewing and playback
 
-- `Thumbnail` (gallery/list) uses thumbnails, or the full image when the on-screen size
-  exceeds the thumbnail size, or for GIFs.
-- `SlideMode/ZoomableImage` asks `ImageLoader.getImageSrc` for a decodable source and falls
-  back to the thumbnail; `ZoomPan` provides pan/zoom for still images.
+- `Thumbnail` (gallery/list/masonry) uses generated thumbnails/posters (including for video);
+  videos never go through `getImageSrc` for full decode in the grid.
+- `SlideMode`: branches on media kind — images use `ZoomPan` with a decodable source from
+  `ImageLoader.getImageSrc` (falling back to thumbnail); videos render a `<video>` player with
+  controls/poster (`object-fit: contain`) when `canPlayType` indicates support, otherwise show
+  a poster + "Open in external application" fallback. Side navigation overlays are hidden for
+  playable videos so native controls remain clickable.
 - `Preview.tsx` reuses `ContentView`, so it inherits the same pipeline.
 
 ## State management

@@ -1,10 +1,14 @@
 # Allusion — Repository Audit
 
-Audit performed on commit `631cfb5f` (Allusion `v1.0.0-rc.10`, 2023-05-30).
+Initial audit performed on commit `631cfb5f` (Allusion `v1.0.0-rc.10`, 2023-05-30).
 Method: static analysis of the full source tree, dependency/version review, and a live
 metadata check with the bundled ExifTool against generated MP4/WebM/AVI/MKV samples.
-No `node_modules` is present in this checkout, so Jest and the production build were not
-run; findings that require a runtime check are marked as such.
+
+**Update (2026-11-11, `ec91ecc9`):** media-support phases A0/A1 and B0–B4 have landed
+(images: AVIF; video: discovery, metadata/duration, poster thumbnails, slide/preview playback
+with `canPlayType` gating + fallback, settings/search grouping, DnD/clipboard import). The
+repo now has 7 Jest suites / 50 tests (including media registry/metadata/preferences). Sections
+below retain original findings for history; current status is summarized in §7.
 
 ---
 
@@ -321,26 +325,46 @@ The detailed implementation plan for items 2–7 is in
 
 ---
 
-## 7. Resolved by A0 + B0
+## 7. Status update (as of `ec91ecc9`)
 
-- **H2 (partially)** — the extension registry is split into `IMAGE_EXTENSIONS`,
-  `VIDEO_EXTENSIONS` and `FILE_EXTENSIONS` with `FileKind`/`isImageExtension`/
-  `isVideoExtension`/`getFileKind` helpers. `IMG_EXTENSIONS` remains as a deprecated alias
-  until all consumers are migrated.
-- **M4 (partially)** — `FileDTO` now stores `duration` (seconds) and `kind`; the inspector
-  and list UI still need to surface them (Phase B3).
-- **H1** — partially resolved. Video extensions are registered, default-enabled and
-  discoverable, width/height/duration metadata is stored, poster thumbnails are generated for
-  decodable videos, slide/preview mode plays supported videos (`canPlayType`) with an
-  external-open fallback, and drag & drop / clipboard import accept supported videos.
-  Browser-extension video import and search-by-kind/duration remain pending (Phase B5 /
-  optional).
-- **M4** — mostly resolved for UI surfacing. `FileDTO`/`ClientFile` store and display
-  `duration` and `kind`; duration is not yet an indexed/searchable criterion.
-- **M3** — partially resolved. Settings now groups image and video formats, badges
-  preview-only formats, and confirms before deleting videos.
-- **M4** — partially resolved. `FileDTO` stores `duration` and `kind`; the inspector and
-  list UI still need to surface them (Phase B3).
-- **Side fix:** `OrderBy<T>` now uses `-?` so optional `FileDTO` fields do not leak
-  `undefined` into the orderable-key union (this broke `Backend.fetchFiles`/`searchFiles`
-  once `kind`/`duration` were added).
+### Resolved / largely addressed
+
+- **H1 (video support, largely done):** video extensions registered and discoverable; metadata
+  (dimensions + duration) extracted via ExifTool (`parseDuration` handles numeric/HMS/formatted);
+  poster thumbnails generated; slide/preview playback via `<video>` with `canPlayType` gating and
+  external-open fallback (playable-video nav overlay fix in `ec91ecc9`); duration/kind surfaced
+  in gallery/list/inspector; DnD and clipboard import accept supported video media. **Remaining:**
+  browser-extension video import, search/filter by kind/duration (B5, needs schema/index bump),
+  optional drag-export icon/polish.
+- **H2 (registry redesign, largely done):** `IMAGE_EXTENSIONS`/`VIDEO_EXTENSIONS`/
+  `FILE_EXTENSIONS`, `FileKind`, kind helpers and per-kind handler maps (`format-handlers.ts`)
+  are in place; `IMG_EXTENSIONS` kept as deprecated alias. Some consumers may still use aliases.
+- **H3 (DnD MIME handling, fixed):** `dnd.ts` now uses `EXTENSION_TO_MIME` over
+  `FILE_EXTENSIONS`, accepts `image/*`/`video/*` and known mimes/extensions, handles URL/media
+  drops, and generalizes to `storeDroppedMedia`.
+- **M3 (settings UI, mostly done):** image/video grouped in picker, preview-only formats badged,
+  confirm before deleting disabled video files.
+- **M4 (duration/codec metadata, mostly done):** `FileDTO`/`ClientFile` store `duration` and
+  `kind`; UI shows duration and exposes video-related exif fields. Not indexed/searchable yet.
+- **M6 (prefs/default migration, addressed):** versioned preferences with default merge/migration
+  for newly enabled default video formats (`location-store-preferences.ts`).
+- **A1 (AVIF):** added as browser-native image format.
+- **Side fix:** `OrderBy<T>` uses `-?` for optional fields.
+
+### Still open / relevant
+
+- **H4:** `Backend.createFilesFromPath` does not await/return `bulkAdd` inside the transaction
+  (correctness risk) — not addressed.
+- **M1/M2:** Electron 21 / Chromium 96 and bundled ExifTool 12.54 are old (limits codecs/format
+  support) — upgrade planned separately ([ELECTRON_UPGRADE_PLAN.md](ELECTRON_UPGRADE_PLAN.md)).
+- **M5:** browser extension remains image-only (local server stores arbitrary bytes).
+- **M7/M8:** TIFF loader assumptions and thumbnail pipeline edge cases remain.
+- **Low/tech debt:** L1–L13 largely unchanged except format-related items improved by the new
+  registries/MIME map.
+
+### Test coverage (current)
+
+7 suites, 50 tests (`backend`, `tag-store`, `utils`, `virtualized-renderer`,
+`media-extensions`, `media-metadata`, `location-store-preferences`). Still no renderer/DOM/
+worker/WASM integration tests; media pipelines rely on manual checks and small fixtures in
+`resources/test_images`.

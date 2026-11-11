@@ -1,6 +1,7 @@
 export type OrderBy<T> =
   | {
-      [K in keyof T]: K extends string ? K : never;
+      // `-?` removes optional modifiers, so optional DTO fields don't add `undefined` to the union
+      [K in keyof T]-?: K extends string ? K : never;
     }[keyof T]
   | 'random';
 
@@ -47,7 +48,7 @@ export const NumberOperators = [
   'greaterThan',
   'greaterThanOrEquals',
 ] as const;
-export type NumberOperatorType = typeof NumberOperators[number];
+export type NumberOperatorType = (typeof NumberOperators)[number];
 
 export const StringOperators = [
   'equalsIgnoreCase',
@@ -59,7 +60,7 @@ export const StringOperators = [
   'contains',
   'notContains',
 ] as const;
-export type StringOperatorType = typeof StringOperators[number];
+export type StringOperatorType = (typeof StringOperators)[number];
 
 export const ArrayOperators = ['contains', 'notContains'] as const;
-export type ArrayOperatorType = typeof ArrayOperators[number];
+export type ArrayOperatorType = (typeof ArrayOperators)[number];

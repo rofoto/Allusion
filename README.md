@@ -30,3 +30,5 @@ Builds are automatically published to Github Releases when a tag is created in G
 ## Further Information
 
 Anything related from documentation to frequently asked questions can be found in our [wiki](https://github.com/allusion-app/Allusion/wiki).
+
+Repository audit, architecture notes and implementation plans are documented in [`AGENTS/`](./AGENTS/AGENTS.md).

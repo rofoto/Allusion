@@ -4,7 +4,7 @@ import { Stats } from 'fs';
 import { BigIntStats } from 'original-fs';
 import SysPath from 'path';
 import { RECURSIVE_DIR_WATCH_DEPTH } from 'common/config';
-import { IMG_EXTENSIONS_TYPE } from 'src/api/file';
+import { FILE_EXTENSIONS_TYPE } from 'src/api/file';
 import { FileStats } from '../stores/LocationStore';
 
 const ctx: Worker = self as any;
@@ -24,7 +24,7 @@ export class FolderWatcherWorker {
   }
 
   /** Returns all supported image files in the given directly, and callbacks for new or removed files */
-  async watch(directory: string, extensions: IMG_EXTENSIONS_TYPE[]) {
+  async watch(directory: string, extensions: FILE_EXTENSIONS_TYPE[]) {
     this.isCancelled = false;
 
     // Replace backslash with forward slash, recommended by chokidar
@@ -59,7 +59,7 @@ export class FolderWatcherWorker {
           return false;
         }
         // If the path (file or directory) ends with an image extension, don't ignore it.
-        if (extensions.includes(ext as IMG_EXTENSIONS_TYPE)) {
+        if (extensions.includes(ext as FILE_EXTENSIONS_TYPE)) {
           return false;
         }
         // Otherwise, we need to know whether it is a file or a directory before making a decision.
@@ -91,7 +91,7 @@ export class FolderWatcherWorker {
           }
 
           const ext = SysPath.extname(path).toLowerCase().split('.')[1];
-          if (extensions.includes(ext as IMG_EXTENSIONS_TYPE)) {
+          if (extensions.includes(ext as FILE_EXTENSIONS_TYPE)) {
             /**
              * Chokidar doesn't detect renames as a unique event, it detects a "remove" and "add" event.
              * We use the "ino" field of file stats to detect whether a new file is a previously detected file that was moved/renamed

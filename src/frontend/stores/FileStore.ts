@@ -6,7 +6,7 @@ import { promiseAllLimit } from 'common/promise';
 import { debounce } from 'common/timeout';
 import { DataStorage } from '../../api/data-storage';
 import { ConditionDTO, OrderBy, OrderDirection } from '../../api/data-storage-search';
-import { FileDTO, IMG_EXTENSIONS_TYPE } from '../../api/file';
+import { FileDTO, FILE_EXTENSIONS_TYPE } from '../../api/file';
 import { ID } from '../../api/id';
 import { AppToaster } from '../components/Toaster';
 import { ClientFile, mergeMovedFile } from '../entities/File';
@@ -292,7 +292,7 @@ class FileStore {
     }
   }
 
-  @action async deleteFilesByExtension(ext: IMG_EXTENSIONS_TYPE): Promise<void> {
+  @action async deleteFilesByExtension(ext: FILE_EXTENSIONS_TYPE): Promise<void> {
     try {
       const crit = new ClientStringSearchCriteria('extension', ext, 'equals');
       const files = await this.backend.searchFiles(crit.toCondition(), 'id', OrderDirection.Asc);

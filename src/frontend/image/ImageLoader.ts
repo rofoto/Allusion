@@ -4,41 +4,14 @@ import StreamZip from 'node-stream-zip';
 
 import ExifIO from 'common/ExifIO';
 import { thumbnailMaxSize } from 'common/config';
-import { FileDTO, IMG_EXTENSIONS_TYPE } from '../../api/file';
+import { FileDTO, isVideoExtension } from '../../api/file';
 import { ClientFile } from '../entities/File';
+import { getFormatHandler } from './format-handlers';
 import ExrLoader from './ExrLoader';
 import PsdLoader from './PSDLoader';
 import { generateThumbnailUsingWorker } from './ThumbnailGeneration';
 import TifLoader from './TifLoader';
 import { generateThumbnail, getBlob } from './util';
-
-type FormatHandlerType =
-  | 'web'
-  | 'tifLoader'
-  | 'exrLoader'
-  | 'psdLoader'
-  | 'extractEmbeddedThumbnailOnly'
-  | 'none';
-
-const FormatHandlers: Record<IMG_EXTENSIONS_TYPE, FormatHandlerType> = {
-  gif: 'web',
-  png: 'web',
-  apng: 'web',
-  jpg: 'web',
-  jpeg: 'web',
-  jfif: 'web',
-  webp: 'web',
-  bmp: 'web',
-  ico: 'web',
-  svg: 'none',
-  tif: 'tifLoader',
-  tiff: 'tifLoader',
-  psd: 'psdLoader',
-  kra: 'extractEmbeddedThumbnailOnly',
-  // xcf: 'extractEmbeddedThumbnailOnly',
-  exr: 'exrLoader',
-  // avif: 'sharp',
-};
 
 type ObjectURL = string;
 
@@ -62,13 +35,18 @@ class ImageLoader {
   }
 
   needsThumbnail(file: FileDTO) {
+    // Videos always need a poster frame as their thumbnail
+    if (isVideoExtension(file.extension)) {
+      return true;
+    }
+
     // Not using thumbnails for gifs, since they're mostly used for animations, which doesn't get preserved in thumbnails
     if (file.extension === 'gif') {
       return false;
     }
 
     return (
-      FormatHandlers[file.extension] !== 'web' ||
+      getFormatHandler(file.extension) !== 'web' ||
       file.width > thumbnailMaxSize ||
       file.height > thumbnailMaxSize
     );
@@ -97,7 +75,7 @@ class ImageLoader {
       }
     }
 
-    const handlerType = FormatHandlers[extension];
+    const handlerType = getFormatHandler(extension);
     switch (handlerType) {
       case 'web':
         await generateThumbnailUsingWorker(file, thumbnailPath);
@@ -131,6 +109,9 @@ class ImageLoader {
         await generateThumbnail(this.psdLoader, absolutePath, thumbnailPath, thumbnailMaxSize);
         updateThumbnailPath(file, thumbnailPath);
         break;
+      case 'video':
+        // Poster frame extraction is implemented in Phase B2
+        throw new Error('Video thumbnails are not supported yet');
       case 'none':
         // No thumbnail for this format
         file.setThumbnailPath(file.absolutePath);
@@ -143,7 +124,7 @@ class ImageLoader {
   }
 
   async getImageSrc(file: ClientFile): Promise<string | undefined> {
-    const handlerType = FormatHandlers[file.extension];
+    const handlerType = getFormatHandler(file.extension);
     switch (handlerType) {
       case 'web':
         return file.absolutePath;
@@ -169,6 +150,8 @@ class ImageLoader {
       // TODO: krita has full image also embedded (mergedimage.png)
       case 'extractEmbeddedThumbnailOnly':
       case 'none':
+      case 'video':
+        // Full-size video playback is implemented in Phase B3
         return undefined;
       default:
         console.warn('Unsupported extension', file.absolutePath, file.extension);
@@ -177,9 +160,11 @@ class ImageLoader {
   }
 
   /** Returns 0 for width and height if they can't be determined */
-  async getImageResolution(absolutePath: string): Promise<{ width: number; height: number }> {
-    // ExifTool should be able to read the resolution from any image file
-    const dimensions = await this.exifIO.getDimensions(absolutePath);
+  async getImageResolution(
+    absolutePath: string,
+  ): Promise<{ width: number; height: number; duration?: number }> {
+    // ExifTool should be able to read the resolution (and duration) from any media file
+    const dimensions = await this.exifIO.getMediaMetadata(absolutePath);
 
     // User report: Resolution can't be found for PSD files.
     // Can't reproduce myself, but putting a check in place anyway. Maybe due to old PSD format?

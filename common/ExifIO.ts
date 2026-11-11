@@ -62,6 +62,42 @@ const defaultWriteArgs = [
   'P', // for preserving the modified date of files
 ];
 
+/**
+ * Parses an ExifTool duration value into seconds.
+ *
+ * ExifTool returns different formats depending on the container: a number for MP4/AVI
+ * (`2`), but an HMS timestamp for WebM/MKV (`00:00:02.000000000`). Formatted values such
+ * as `2.00 s` are handled as a fallback.
+ */
+function parseDuration(value: unknown): number | undefined {
+  if (value === undefined || value === null) {
+    return undefined;
+  }
+  if (typeof value === 'number') {
+    return Number.isFinite(value) ? value : undefined;
+  }
+
+  const str = value.toString().trim();
+  // Plain number, optionally with a unit suffix (e.g. "2.5" or "2.00 s")
+  const numericMatch = /^(\d+(?:\.\d+)?)\s*(?:s|sec|secs|seconds?)?$/i.exec(str);
+  if (numericMatch) {
+    const seconds = Number(numericMatch[1]);
+    return Number.isFinite(seconds) ? seconds : undefined;
+  }
+
+  // HMS timestamp (e.g. "00:00:02.000000000" or "01:02:03")
+  const hmsMatch = /^(?:(\d+):)?(\d{1,2}):(\d{1,2}(?:\.\d+)?)$/.exec(str);
+  if (hmsMatch) {
+    const hours = Number(hmsMatch[1] || 0);
+    const minutes = Number(hmsMatch[2]);
+    const seconds = Number(hmsMatch[3]);
+    const total = hours * 3600 + minutes * 60 + seconds;
+    return Number.isFinite(total) ? total : undefined;
+  }
+
+  return undefined;
+}
+
 class ExifIO {
   @observable hierarchicalSeparator: string;
 
@@ -310,22 +346,40 @@ class ExifIO {
    * @returns The width and height of the image, or width and height as 0 if the resolution could not be determined.
    */
   async getDimensions(filepath: string): Promise<{ width: number; height: number }> {
+    const { width, height } = await this.getMediaMetadata(filepath);
+    return { width, height };
+  }
+
+  /**
+   * Reads width, height and (for video) duration from a media file.
+   * @param filepath The file to read the metadata from
+   * @returns The dimensions, or 0/0 if they could not be determined. Duration is
+   * undefined for images and for files without a readable duration.
+   */
+  async getMediaMetadata(
+    filepath: string,
+  ): Promise<{ width: number; height: number; duration?: number }> {
     let metadata: Awaited<ReturnType<typeof ep.readMetadata>> | undefined = undefined;
     try {
       metadata = await ep.readMetadata(filepath, [
         's3',
         'ImageWidth',
         'ImageHeight',
+        'Duration#',
         ...this.extraArgs,
       ]);
       if (metadata.error || !metadata.data?.[0]) {
         throw new Error(metadata.error || 'No metadata entry');
       }
       const entry = metadata.data[0];
-      const { ImageWidth, ImageHeight } = entry;
-      return { width: ImageWidth, height: ImageHeight };
+      const { ImageWidth, ImageHeight, Duration } = entry;
+      return {
+        width: ImageWidth,
+        height: ImageHeight,
+        duration: parseDuration(Duration),
+      };
     } catch (e) {
-      console.error('Could not read image dimensions from ', filepath, e, metadata);
+      console.error('Could not read media metadata from ', filepath, e, metadata);
       return { width: 0, height: 0 };
     }
   }

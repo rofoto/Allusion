@@ -1,6 +1,6 @@
 import { generateWidgetId } from 'widgets/utility';
 import { NumberOperatorType, StringOperatorType } from '../../../api/data-storage-search';
-import { FileDTO, IMG_EXTENSIONS } from '../../../api/file';
+import { FileDTO, IMAGE_EXTENSIONS } from '../../../api/file';
 import { ID } from '../../../api/id';
 import { BinaryOperatorType, OperatorType, TagOperatorType } from '../../../api/search-criteria';
 import {
@@ -47,7 +47,7 @@ export function defaultQuery(key: Key): Criteria {
     return {
       key,
       operator: 'equals',
-      value: IMG_EXTENSIONS[0],
+      value: IMAGE_EXTENSIONS[0],
     };
   } else if (key === 'dateAdded') {
     return {

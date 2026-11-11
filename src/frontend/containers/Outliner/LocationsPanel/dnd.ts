@@ -4,7 +4,7 @@ import path from 'path';
 
 import { retainArray } from 'common/core';
 import { timeoutPromise } from 'common/timeout';
-import { IMG_EXTENSIONS } from '../../../../api/file';
+import { IMAGE_EXTENSIONS } from '../../../../api/file';
 import { StoreFileMessage } from '../../../../ipc/messages';
 import { RendererMessenger } from '../../../../ipc/renderer';
 import { ALLOWED_DROP_TYPES } from '../../../contexts/DropContext';
@@ -12,7 +12,7 @@ import { DnDAttribute } from '../../../contexts/TagDnDContext';
 import { ClientFile } from '../../../entities/File';
 import FileStore from '../../../stores/FileStore';
 
-const ALLOWED_FILE_DROP_TYPES = IMG_EXTENSIONS.map((ext) => `image/${ext}`);
+const ALLOWED_FILE_DROP_TYPES = IMAGE_EXTENSIONS.map((ext) => `image/${ext}`);
 
 export const isAcceptableType = (e: React.DragEvent) =>
   e.dataTransfer.types.some((type) => ALLOWED_DROP_TYPES.includes(type));
@@ -77,7 +77,7 @@ export async function storeDroppedImage(dropData: (string | File)[], directory: 
       const { imgBase64, blob } = await imageAsBase64(dataItem);
       const extension = blob.type.split('/')[1];
       const filename = getFilenameFromUrl(dataItem, 'image');
-      const filenameWithExt = IMG_EXTENSIONS.some((ext) => filename.endsWith(ext))
+      const filenameWithExt = IMAGE_EXTENSIONS.some((ext) => filename.endsWith(ext))
         ? filename
         : `${filename}.${extension}`;
       fileData = { directory, imgBase64, filenameWithExt };
@@ -102,7 +102,7 @@ export async function storeDroppedImage(dropData: (string | File)[], directory: 
 async function testImage(url: string, timeout: number = 2000): Promise<boolean> {
   try {
     const blob = await timeoutPromise(timeout, fetch(url));
-    return IMG_EXTENSIONS.some((ext) => blob.type.endsWith(ext));
+    return IMAGE_EXTENSIONS.some((ext) => blob.type.endsWith(ext));
   } catch (e) {
     return false;
   }
@@ -172,7 +172,7 @@ export async function getDropData(e: React.DragEvent): Promise<Array<File | stri
       if (item instanceof File) {
         return true;
         // Check if the URL has an image extension, or perform a network request
-      } else if (IMG_EXTENSIONS.some((ext) => item.toLowerCase().includes(`.${ext}`))) {
+      } else if (IMAGE_EXTENSIONS.some((ext) => item.toLowerCase().includes(`.${ext}`))) {
         return true;
       } else {
         return await testImage(item);

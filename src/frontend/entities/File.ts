@@ -8,7 +8,7 @@ import {
 } from 'mobx';
 import Path from 'path';
 
-import { FileDTO, IMG_EXTENSIONS_TYPE } from '../../api/file';
+import { FILE_EXTENSIONS_TYPE, FILE_EXTENSION_KIND, FileDTO, FileKind } from '../../api/file';
 import { ID } from '../../api/id';
 import ImageLoader from '../image/ImageLoader';
 import FileStore from '../stores/FileStore';
@@ -20,13 +20,17 @@ interface IMetaData {
   /** Duplicate data; also exists as part of the absolutePath. Used for DB queries */
   name: string;
   /** in lowercase, without the dot */
-  extension: IMG_EXTENSIONS_TYPE;
+  extension: FILE_EXTENSIONS_TYPE;
   /** Size in bytes */
   size: number;
   width: number;
   height: number;
+  /** Duration in seconds, for video files */
+  duration?: number;
   /** Date when this file was created (from the OS, not related to Allusion) */
   dateCreated: Date;
+  /** Whether this file is an image or a video */
+  kind?: FileKind;
 }
 
 /**
@@ -53,7 +57,7 @@ export class ClientFile {
   readonly dateModified: Date;
   readonly dateLastIndexed: Date;
   readonly name: string;
-  readonly extension: IMG_EXTENSIONS_TYPE;
+  readonly extension: FILE_EXTENSIONS_TYPE;
   /** Same as "name", but without extension */
   readonly filename: string;
 
@@ -178,14 +182,17 @@ export class ClientFile {
 /** Should be called when after constructing a file before sending it to the backend. */
 export async function getMetaData(stats: FileStats, imageLoader: ImageLoader): Promise<IMetaData> {
   const path = stats.absolutePath;
-  const dimensions = await imageLoader.getImageResolution(stats.absolutePath);
+  const extension = Path.extname(path).slice(1).toLowerCase() as FILE_EXTENSIONS_TYPE;
+  const dimensions = await imageLoader.getImageResolution(path);
 
   return {
     name: Path.basename(path),
-    extension: Path.extname(path).slice(1).toLowerCase() as IMG_EXTENSIONS_TYPE,
+    extension,
     size: stats.size,
     width: dimensions.width,
     height: dimensions.height,
+    duration: dimensions.duration,
+    kind: FILE_EXTENSION_KIND[extension],
     dateCreated: stats.dateCreated,
   };
 }

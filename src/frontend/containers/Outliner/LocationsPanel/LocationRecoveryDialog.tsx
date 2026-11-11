@@ -5,7 +5,7 @@ import React, { useState } from 'react';
 
 import { Button, IconSet } from 'widgets';
 import { Dialog } from 'widgets/popovers';
-import { IMG_EXTENSIONS } from '../../../../api/file';
+import { FILE_EXTENSIONS } from '../../../../api/file';
 import { RendererMessenger } from '../../../../ipc/renderer';
 import { AppToaster } from '../../../components/Toaster';
 import { useStore } from '../../../contexts/StoreContext';
@@ -25,7 +25,7 @@ async function findImagesRecursively(path: string): Promise<string[]> {
       const fullPath = Path.join(path, file);
       if ((await fse.stat(fullPath)).isDirectory()) {
         imgs.push(...(await findImagesRecursively(fullPath)));
-      } else if (IMG_EXTENSIONS.some((ext) => file.toLowerCase().endsWith(ext))) {
+      } else if (FILE_EXTENSIONS.some((ext) => file.toLowerCase().endsWith(ext))) {
         imgs.push(fullPath);
       }
     }

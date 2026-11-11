@@ -22,16 +22,23 @@ export type FileDTO = {
   /** Duplicate data; also exists as part of the absolutePath. Used for DB queries */
   name: string;
   /** in lowercase, without the dot */
-  extension: IMG_EXTENSIONS_TYPE;
+  extension: FILE_EXTENSIONS_TYPE;
   /** Size in bytes */
   size: number;
   width: number;
   height: number;
+  /** Duration in seconds. Only set for video files. */
+  duration?: number;
   /** Date when this file was created (from the OS, not related to Allusion) */
   dateCreated: Date;
+  /** Whether this file is an image or a video. Derived from the extension when indexing. */
+  kind?: FileKind;
 };
 
-export const IMG_EXTENSIONS = [
+/** The kind of media a file contains. */
+export type FileKind = 'image' | 'video';
+
+export const IMAGE_EXTENSIONS = [
   'gif',
   'png',
   'apng',
@@ -54,4 +61,54 @@ export const IMG_EXTENSIONS = [
   // 'heic', // not supported by Sharp out of the box https://github.com/lovell/sharp/issues/2871
   // TODO: 'blend', raw, etc.?
 ] as const;
-export type IMG_EXTENSIONS_TYPE = typeof IMG_EXTENSIONS[number];
+
+export const VIDEO_EXTENSIONS = [
+  'mp4',
+  'm4v',
+  'mov',
+  'webm',
+  'ogv',
+  'mkv',
+  'avi',
+  'wmv',
+  'flv',
+  'ts',
+  'mts',
+  'm2ts',
+  '3gp',
+  '3g2',
+] as const;
+
+/** Every file extension that Allusion can index, images and videos combined. */
+export const FILE_EXTENSIONS = [...IMAGE_EXTENSIONS, ...VIDEO_EXTENSIONS] as const;
+
+export type IMAGE_EXTENSIONS_TYPE = (typeof IMAGE_EXTENSIONS)[number];
+export type VIDEO_EXTENSIONS_TYPE = (typeof VIDEO_EXTENSIONS)[number];
+export type FILE_EXTENSIONS_TYPE = (typeof FILE_EXTENSIONS)[number];
+
+/** Maps every supported file extension to its media kind. */
+export const FILE_EXTENSION_KIND: Record<FILE_EXTENSIONS_TYPE, FileKind> = {
+  ...Object.fromEntries(IMAGE_EXTENSIONS.map((ext) => [ext, 'image'])),
+  ...Object.fromEntries(VIDEO_EXTENSIONS.map((ext) => [ext, 'video'])),
+} as Record<FILE_EXTENSIONS_TYPE, FileKind>;
+
+/** Case-insensitive check whether an extension belongs to an image format. */
+export const isImageExtension = (extension: string): extension is IMAGE_EXTENSIONS_TYPE =>
+  (IMAGE_EXTENSIONS as readonly string[]).includes(extension.toLowerCase());
+
+/** Case-insensitive check whether an extension belongs to a video format. */
+export const isVideoExtension = (extension: string): extension is VIDEO_EXTENSIONS_TYPE =>
+  (VIDEO_EXTENSIONS as readonly string[]).includes(extension.toLowerCase());
+
+/** Returns the media kind for a known extension, or undefined for unknown extensions. */
+export const getFileKind = (extension: string): FileKind | undefined =>
+  isImageExtension(extension) ? 'image' : isVideoExtension(extension) ? 'video' : undefined;
+
+/**
+ * @deprecated Use `IMAGE_EXTENSIONS` or `FILE_EXTENSIONS` instead.
+ */
+export const IMG_EXTENSIONS = IMAGE_EXTENSIONS;
+/**
+ * @deprecated Use `IMAGE_EXTENSIONS_TYPE` or `FILE_EXTENSIONS_TYPE` instead.
+ */
+export type IMG_EXTENSIONS_TYPE = IMAGE_EXTENSIONS_TYPE;

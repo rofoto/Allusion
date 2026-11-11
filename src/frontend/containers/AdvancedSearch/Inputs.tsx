@@ -3,7 +3,7 @@ import React, { ForwardedRef, forwardRef, useState } from 'react';
 
 import { camelCaseToSpaced } from 'common/fmt';
 import { NumberOperators, StringOperators } from '../../../api/data-storage-search';
-import { IMG_EXTENSIONS } from '../../../api/file';
+import { IMAGE_EXTENSIONS } from '../../../api/file';
 import { BinaryOperators, TagOperators } from '../../../api/search-criteria';
 import { TagSelector } from '../../components/TagSelector';
 import { useStore } from '../../contexts/StoreContext';
@@ -249,7 +249,7 @@ const ExtensionInput = ({ labelledby, value, dispatch }: ValueInput<string>) => 
     onChange={(e) => dispatch(setValue(e.target.value))}
     value={value}
   >
-    {IMG_EXTENSIONS.map((ext) => (
+    {IMAGE_EXTENSIONS.map((ext) => (
       <option key={ext} value={ext}>
         {ext.toUpperCase()}
       </option>

@@ -1,6 +1,6 @@
 import { observer } from 'mobx-react-lite';
 import React, { ReactNode, useCallback, useState } from 'react';
-import { IMG_EXTENSIONS, IMG_EXTENSIONS_TYPE } from 'src/api/file';
+import { FILE_EXTENSIONS_TYPE, IMAGE_EXTENSIONS, IMAGE_EXTENSIONS_TYPE } from 'src/api/file';
 import { RendererMessenger } from 'src/ipc/renderer';
 import { Button, Checkbox, IconSet, Toggle } from 'widgets';
 import { useStore } from '../../contexts/StoreContext';
@@ -15,7 +15,7 @@ export const ImageFormatPicker = observer(() => {
     new Set(locationStore.enabledFileExtensions),
   );
   const toggleExtension = useCallback(
-    (ext: IMG_EXTENSIONS_TYPE) => {
+    (ext: FILE_EXTENSIONS_TYPE) => {
       const newNewEnabledFileExtensions = new Set(newEnabledFileExtensions);
       if (newEnabledFileExtensions.has(ext)) {
         newNewEnabledFileExtensions.delete(ext);
@@ -29,7 +29,9 @@ export const ImageFormatPicker = observer(() => {
 
   const onSubmit = useCallback(async () => {
     if (removeDisabledImages) {
-      const extensionsToDelete = IMG_EXTENSIONS.filter((ext) => !newEnabledFileExtensions.has(ext));
+      const extensionsToDelete = IMAGE_EXTENSIONS.filter(
+        (ext) => !newEnabledFileExtensions.has(ext),
+      );
 
       for (const ext of extensionsToDelete) {
         await fileStore.deleteFilesByExtension(ext);
@@ -49,7 +51,7 @@ export const ImageFormatPicker = observer(() => {
       <fieldset>
         <legend>Image formats to be discovered by Allusion in your Locations</legend>
         <div className="checkbox-set-container">
-          {IMG_EXTENSIONS.map((ext) => (
+          {IMAGE_EXTENSIONS.map((ext) => (
             <Checkbox
               key={ext}
               checked={newEnabledFileExtensions.has(ext)}
@@ -87,7 +89,7 @@ export const ImageFormatPicker = observer(() => {
   );
 });
 
-const imageFormatInts: Partial<Record<IMG_EXTENSIONS_TYPE, ReactNode>> = {
+const imageFormatInts: Partial<Record<IMAGE_EXTENSIONS_TYPE, ReactNode>> = {
   exr: (
     <span
       // TODO: Get TooltipLayer working in PopupWindow: tried a bunch of things but no bueno

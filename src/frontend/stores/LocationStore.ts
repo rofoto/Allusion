@@ -6,7 +6,7 @@ import { getThumbnailPath } from 'common/fs';
 import { promiseAllLimit } from 'common/promise';
 import { DataStorage } from '../../api/data-storage';
 import { OrderDirection } from '../../api/data-storage-search';
-import { FileDTO, IMG_EXTENSIONS, IMG_EXTENSIONS_TYPE } from '../../api/file';
+import { FileDTO, FILE_EXTENSIONS_TYPE, IMAGE_EXTENSIONS } from '../../api/file';
 import { ID, generateId } from '../../api/id';
 import { LocationDTO } from '../../api/location';
 import { RendererMessenger } from '../../ipc/renderer';
@@ -18,7 +18,7 @@ import ImageLoader from '../image/ImageLoader';
 import RootStore from './RootStore';
 
 const PREFERENCES_STORAGE_KEY = 'location-store-preferences';
-type Preferences = { extensions: IMG_EXTENSIONS_TYPE[] };
+type Preferences = { extensions: FILE_EXTENSIONS_TYPE[] };
 
 /**
  * Compares metadata of two files to determine whether the files are (likely to be) identical
@@ -42,7 +42,7 @@ class LocationStore {
 
   // Allow users to disable certain file types. Global option for now, needs restart
   // TODO: Maybe per location/sub-location?
-  readonly enabledFileExtensions = observable(new Set<IMG_EXTENSIONS_TYPE>());
+  readonly enabledFileExtensions = observable(new Set<FILE_EXTENSIONS_TYPE>());
 
   constructor(backend: DataStorage, rootStore: RootStore) {
     this.backend = backend;
@@ -55,10 +55,11 @@ class LocationStore {
     // Restore preferences
     try {
       const prefs = JSON.parse(localStorage.getItem(PREFERENCES_STORAGE_KEY) || '') as Preferences;
-      (prefs.extensions || IMG_EXTENSIONS).forEach((ext) => this.enabledFileExtensions.add(ext));
+      // Fall back to image formats only for now; video extensions are enabled in a later phase
+      (prefs.extensions || IMAGE_EXTENSIONS).forEach((ext) => this.enabledFileExtensions.add(ext));
     } catch (e) {
-      // If no preferences found, use defaults
-      IMG_EXTENSIONS.forEach((ext) => this.enabledFileExtensions.add(ext));
+      // If no preferences found, use defaults (images only for now)
+      IMAGE_EXTENSIONS.forEach((ext) => this.enabledFileExtensions.add(ext));
       // By default, disable EXR for now (experimental)
       this.enabledFileExtensions.delete('exr');
     }
@@ -444,7 +445,7 @@ class LocationStore {
     this.rootStore.fileStore.refetchFileCounts();
   }
 
-  @action.bound setSupportedImageExtensions(extensions: Set<IMG_EXTENSIONS_TYPE>): void {
+  @action.bound setSupportedImageExtensions(extensions: Set<FILE_EXTENSIONS_TYPE>): void {
     this.enabledFileExtensions.replace(extensions);
     localStorage.setItem(
       PREFERENCES_STORAGE_KEY,

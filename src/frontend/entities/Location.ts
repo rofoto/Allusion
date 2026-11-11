@@ -4,7 +4,7 @@ import { IObservableArray, action, makeObservable, observable, runInAction } fro
 import SysPath from 'path';
 
 import { retainArray } from 'common/core';
-import { IMG_EXTENSIONS_TYPE } from '../../api/file';
+import { FILE_EXTENSIONS_TYPE } from '../../api/file';
 import { ID } from '../../api/id';
 import { LocationDTO, SubLocationDTO } from '../../api/location';
 import { RendererMessenger } from '../../ipc/renderer';
@@ -83,7 +83,7 @@ export class ClientLocation {
   index: number;
 
   /** The file extensions for the files to be watched */
-  extensions: IMG_EXTENSIONS_TYPE[];
+  extensions: FILE_EXTENSIONS_TYPE[];
 
   readonly subLocations: IObservableArray<ClientSubLocation>;
   /** A cached list of all sublocations that are excluded (isExcluded === true) */
@@ -99,7 +99,7 @@ export class ClientLocation {
     path: string,
     dateAdded: Date,
     subLocations: SubLocationDTO[],
-    extensions: IMG_EXTENSIONS_TYPE[],
+    extensions: FILE_EXTENSIONS_TYPE[],
     index: number,
   ) {
     this.store = store;

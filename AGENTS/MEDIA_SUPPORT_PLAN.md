@@ -55,6 +55,24 @@ landed independently. File paths are relative to the repository root.
   - Tests: `tests/location-store-preferences.test.ts`.
 - **Verified after A1 + B1:** `yarn test` (50 tests, 7 suites), `yarn production`,
   `yarn package` (Linux AppImage), ESLint (0 errors).
+- **Phase B2 — Poster thumbnails: DONE.**
+  - `src/frontend/image/util.ts`: added `generateVideoThumbnail` / `captureVideoFrame`
+    (renderer DOM `<video>` + `<canvas>`). Seeks to a small offset (≤1s / 10% duration) to
+    avoid black first frames, captures the frame, scales/crops to `thumbnailMaxSize`, and
+    writes a WebP thumbnail (same format/quality logic as image thumbnails). 15s timeout;
+    `encodeFilePath` used for the video `src`.
+  - `src/frontend/image/ImageLoader.ts`: `case 'video'` in `ensureThumbnail` now generates a
+    poster via `generateVideoThumbnail` and updates `thumbnailPath`. `needsThumbnail` already
+    returned `true` for videos; `getImageSrc` still returns `undefined` for `video` (playback
+    is Phase B3).
+  - Fixtures: `resources/test_images/sample.mp4` (H.264, 64×64, 2s) and
+    `resources/test_images/sample.webm` (VP9, 64×64, 2s) added for manual checks.
+  - Note: implementation deviates from the plan's `VideoLoader.ts` sketch — poster capture is
+    done in `util.ts`/`ImageLoader` (no separate loader class, no ExifTool-embedded-thumbnail
+    fast path, no explicit concurrency limiter beyond existing thumbnail flow). Unsupported
+    codecs/seek failures will reject and surface as a thumbnail-generation error.
+- **Verified after B2:** `yarn test` (50 tests, 7 suites), ESLint (0 errors). AppImage
+  rebuild pending.
 
 ---
 
@@ -330,7 +348,7 @@ native controls for the first iteration.
 **Exit criteria:** videos appear in the library with correct dimensions/duration; existing
 images unaffected.
 
-#### Phase B2 — Poster thumbnails
+#### Phase B2 — Poster thumbnails — DONE (see progress log; implementation differs from sketch below)
 
 1. New `src/frontend/image/VideoLoader.ts` implementing `Loader`-like behavior:
    - `ensureThumbnail(file, outputPath)`:

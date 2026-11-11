@@ -330,8 +330,9 @@ The detailed implementation plan for items 2–7 is in
 - **M4 (partially)** — `FileDTO` now stores `duration` (seconds) and `kind`; the inspector
   and list UI still need to surface them (Phase B3).
 - **H1** — partially resolved. Video extensions are registered, default-enabled and
-  discoverable, and width/height/duration metadata is stored. Poster thumbnails and
-  playback are still pending (Phases B2–B3).
+  discoverable, width/height/duration metadata is stored, and poster thumbnails are generated
+  for decodable videos via renderer `<video>`+canvas capture. In-app playback and richer UI
+  surfacing are still pending (Phase B3).
 - **M3** — partially resolved. Settings now groups image and video formats, badges
   preview-only formats, and confirms before deleting videos.
 - **M4** — partially resolved. `FileDTO` stores `duration` and `kind`; the inspector and

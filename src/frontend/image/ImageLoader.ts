@@ -11,7 +11,7 @@ import ExrLoader from './ExrLoader';
 import PsdLoader from './PSDLoader';
 import { generateThumbnailUsingWorker } from './ThumbnailGeneration';
 import TifLoader from './TifLoader';
-import { generateThumbnail, getBlob } from './util';
+import { generateThumbnail, generateVideoThumbnail, getBlob } from './util';
 
 type ObjectURL = string;
 
@@ -110,8 +110,9 @@ class ImageLoader {
         updateThumbnailPath(file, thumbnailPath);
         break;
       case 'video':
-        // Poster frame extraction is implemented in Phase B2
-        throw new Error('Video thumbnails are not supported yet');
+        await generateVideoThumbnail(absolutePath, thumbnailPath, thumbnailMaxSize);
+        updateThumbnailPath(file, thumbnailPath);
+        break;
       case 'none':
         // No thumbnail for this format
         file.setThumbnailPath(file.absolutePath);

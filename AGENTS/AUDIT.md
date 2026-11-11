@@ -329,9 +329,13 @@ The detailed implementation plan for items 2–7 is in
   until all consumers are migrated.
 - **M4 (partially)** — `FileDTO` now stores `duration` (seconds) and `kind`; the inspector
   and list UI still need to surface them (Phase B3).
-- **H1** — not resolved yet. The foundation for video is in place (registry, metadata,
-  handler type), but discovery, poster thumbnails and playback are still pending
-  (Phases B1–B3).
+- **H1** — partially resolved. Video extensions are registered, default-enabled and
+  discoverable, and width/height/duration metadata is stored. Poster thumbnails and
+  playback are still pending (Phases B2–B3).
+- **M3** — partially resolved. Settings now groups image and video formats, badges
+  preview-only formats, and confirms before deleting videos.
+- **M4** — partially resolved. `FileDTO` stores `duration` and `kind`; the inspector and
+  list UI still need to surface them (Phase B3).
 - **Side fix:** `OrderBy<T>` now uses `-?` so optional `FileDTO` fields do not leak
   `undefined` into the orderable-key union (this broke `Backend.fetchFiles`/`searchFiles`
   once `kind`/`duration` were added).

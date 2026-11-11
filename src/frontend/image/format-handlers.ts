@@ -29,6 +29,7 @@ export const IMAGE_FORMAT_HANDLERS: Record<IMAGE_EXTENSIONS_TYPE, ImageHandlerTy
   jpeg: 'web',
   jfif: 'web',
   webp: 'web',
+  avif: 'web',
   bmp: 'web',
   ico: 'web',
   svg: 'none',
@@ -38,7 +39,6 @@ export const IMAGE_FORMAT_HANDLERS: Record<IMAGE_EXTENSIONS_TYPE, ImageHandlerTy
   kra: 'extractEmbeddedThumbnailOnly',
   // xcf: 'extractEmbeddedThumbnailOnly',
   exr: 'exrLoader',
-  // avif: 'sharp',
 };
 
 /**

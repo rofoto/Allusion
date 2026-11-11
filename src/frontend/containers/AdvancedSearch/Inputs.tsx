@@ -3,7 +3,7 @@ import React, { ForwardedRef, forwardRef, useState } from 'react';
 
 import { camelCaseToSpaced } from 'common/fmt';
 import { NumberOperators, StringOperators } from '../../../api/data-storage-search';
-import { IMAGE_EXTENSIONS } from '../../../api/file';
+import { IMAGE_EXTENSIONS, VIDEO_EXTENSIONS } from '../../../api/file';
 import { BinaryOperators, TagOperators } from '../../../api/search-criteria';
 import { TagSelector } from '../../components/TagSelector';
 import { useStore } from '../../contexts/StoreContext';
@@ -249,11 +249,20 @@ const ExtensionInput = ({ labelledby, value, dispatch }: ValueInput<string>) => 
     onChange={(e) => dispatch(setValue(e.target.value))}
     value={value}
   >
-    {IMAGE_EXTENSIONS.map((ext) => (
-      <option key={ext} value={ext}>
-        {ext.toUpperCase()}
-      </option>
-    ))}
+    <optgroup label="Images">
+      {IMAGE_EXTENSIONS.map((ext) => (
+        <option key={ext} value={ext}>
+          {ext.toUpperCase()}
+        </option>
+      ))}
+    </optgroup>
+    <optgroup label="Videos">
+      {VIDEO_EXTENSIONS.map((ext) => (
+        <option key={ext} value={ext}>
+          {ext.toUpperCase()}
+        </option>
+      ))}
+    </optgroup>
   </select>
 );
 

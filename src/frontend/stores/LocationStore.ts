@@ -6,7 +6,7 @@ import { getThumbnailPath } from 'common/fs';
 import { promiseAllLimit } from 'common/promise';
 import { DataStorage } from '../../api/data-storage';
 import { OrderDirection } from '../../api/data-storage-search';
-import { FileDTO, FILE_EXTENSIONS_TYPE, IMAGE_EXTENSIONS } from '../../api/file';
+import { FileDTO, FILE_EXTENSIONS_TYPE } from '../../api/file';
 import { ID, generateId } from '../../api/id';
 import { LocationDTO } from '../../api/location';
 import { RendererMessenger } from '../../ipc/renderer';
@@ -15,10 +15,12 @@ import { getMetaData, mergeMovedFile } from '../entities/File';
 import { ClientLocation, ClientSubLocation } from '../entities/Location';
 import { ClientStringSearchCriteria } from '../entities/SearchCriteria';
 import ImageLoader from '../image/ImageLoader';
+import {
+  PREFERENCES_STORAGE_KEY,
+  resolveEnabledExtensions,
+  serializeEnabledExtensions,
+} from './location-store-preferences';
 import RootStore from './RootStore';
-
-const PREFERENCES_STORAGE_KEY = 'location-store-preferences';
-type Preferences = { extensions: FILE_EXTENSIONS_TYPE[] };
 
 /**
  * Compares metadata of two files to determine whether the files are (likely to be) identical
@@ -52,17 +54,11 @@ class LocationStore {
   }
 
   @action async init(): Promise<void> {
-    // Restore preferences
-    try {
-      const prefs = JSON.parse(localStorage.getItem(PREFERENCES_STORAGE_KEY) || '') as Preferences;
-      // Fall back to image formats only for now; video extensions are enabled in a later phase
-      (prefs.extensions || IMAGE_EXTENSIONS).forEach((ext) => this.enabledFileExtensions.add(ext));
-    } catch (e) {
-      // If no preferences found, use defaults (images only for now)
-      IMAGE_EXTENSIONS.forEach((ext) => this.enabledFileExtensions.add(ext));
-      // By default, disable EXR for now (experimental)
-      this.enabledFileExtensions.delete('exr');
-    }
+    // Restore preferences (with migration for preferences created before video support)
+    const enabledExtensions = resolveEnabledExtensions(
+      localStorage.getItem(PREFERENCES_STORAGE_KEY),
+    );
+    enabledExtensions.forEach((ext) => this.enabledFileExtensions.add(ext));
 
     // Get dirs from backend
     const dirs = await this.backend.fetchLocations();
@@ -449,11 +445,7 @@ class LocationStore {
     this.enabledFileExtensions.replace(extensions);
     localStorage.setItem(
       PREFERENCES_STORAGE_KEY,
-      JSON.stringify(
-        { extensions: Array.from(this.enabledFileExtensions) } as Preferences,
-        null,
-        2,
-      ),
+      serializeEnabledExtensions(this.enabledFileExtensions),
     );
   }
 

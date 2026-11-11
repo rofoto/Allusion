@@ -46,6 +46,7 @@ export const IMAGE_EXTENSIONS = [
   'jpeg',
   'jfif',
   'webp',
+  'avif',
   'tif',
   'tiff',
   'bmp',
@@ -57,7 +58,6 @@ export const IMAGE_EXTENSIONS = [
   // 'xcf', // Gimp
   'exr', // OpenEXR
   // 'raw', there are many RAW file extensions :( https://fileinfo.com/filetypes/camera_raw
-  // 'avif',
   // 'heic', // not supported by Sharp out of the box https://github.com/lovell/sharp/issues/2871
   // TODO: 'blend', raw, etc.?
 ] as const;

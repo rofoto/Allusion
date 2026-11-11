@@ -35,6 +35,26 @@ landed independently. File paths are relative to the repository root.
 - **Verified:** `yarn test` (38 tests, 6 suites), `yarn production`, `yarn package`
   (Linux AppImage), ESLint (0 errors). Tooling pinned with mise (`.mise.toml`, Node
   16.20.2).
+- **Phase A1 — AVIF: DONE.**
+  - `avif` added to `IMAGE_EXTENSIONS` and mapped to the `web` handler.
+  - Verified `createImageBitmap` decodes the new `resources/test_images/small_avif.avif`
+    fixture (64×64, 325 bytes) in headless Chromium; ExifTool reads its dimensions.
+    (Chromium 155 was used for the decode check; AVIF has been supported since Chrome 85,
+    so Electron 21 / Chromium 96 is expected to work, but should be re-verified in-app.)
+- **Phase B1 — Discovery and metadata: DONE.**
+  - New `src/frontend/stores/location-store-preferences.ts` defines
+    `DEFAULT_VIDEO_EXTENSIONS` (`mp4`, `m4v`, `mov`, `webm`),
+    `DEFAULT_ENABLED_EXTENSIONS` (all images except EXR + default videos), and
+    `resolveEnabledExtensions`/`serializeEnabledExtensions` with a versioned migration:
+    preferences created before video support get the default videos enabled once, and
+    current-version preferences are preserved exactly.
+  - `ImageFormatPicker` now has separate image and video fieldsets, deletes disabled files
+    of both kinds, and confirms before deleting videos. Preview-only formats (MKV, AVI,
+    WMV, FLV, TS/MTS/M2TS) are badged.
+  - Advanced search groups image/video extensions in the extension dropdown.
+  - Tests: `tests/location-store-preferences.test.ts`.
+- **Verified after A1 + B1:** `yarn test` (50 tests, 7 suites), `yarn production`,
+  `yarn package` (Linux AppImage), ESLint (0 errors).
 
 ---
 
@@ -203,7 +223,7 @@ native controls for the first iteration.
 
 **Exit criteria:** existing formats behave exactly as before; `yarn test` passes.
 
-#### Phase A1 — AVIF (browser-native)
+#### Phase A1 — AVIF (browser-native) — DONE
 
 1. Add `'avif'` to `IMAGE_EXTENSIONS`.
 2. `IMAGE_HANDLERS.avif = 'web'`.
@@ -293,7 +313,7 @@ native controls for the first iteration.
 
 **Exit criteria:** no UI change yet; existing tests pass.
 
-#### Phase B1 — Discovery and metadata
+#### Phase B1 — Discovery and metadata — DONE
 
 1. Default-enable `mp4`, `m4v`, `mov`, `webm` in `VIDEO_EXTENSIONS` (the Phase A0 registry
    already contains the full list).
@@ -471,8 +491,9 @@ supported); unsupported videos show a clear fallback.
 ### Integration / manual
 
 - Add tiny fixtures to `resources/test_images`:
-  - `sample.mp4` (H.264, ~2 s, < 20 KB), `sample.webm` (VP9, ~2 s), `sample.mkv`.
-  - `sample.avif`, `sample.heic`, `sample.xcf` (small) as they are implemented.
+  - `small_avif.avif` (added in Phase A1; 64×64, 325 bytes).
+  - `sample.mp4` (H.264, ~2 s, < 20 KB), `sample.webm` (VP9, ~2 s), `sample.mkv` (Phase B2).
+  - `sample.heic`, `sample.xcf` (small) as they are implemented.
 - Manual checklist in the README or Help Center:
   - Location scan finds each format.
   - Thumbnail is generated and displayed.
